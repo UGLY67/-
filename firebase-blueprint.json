@@ -1,0 +1,396 @@
+{
+  "entities": {
+    "PublicUser": {
+      "title": "PublicUser",
+      "description": "Public directory profile for messenger users without PII",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "username": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 40,
+          "pattern": "^[a-z0-9_]+$"
+        },
+        "bio": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 200
+        },
+        "photoURL": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 35000
+        },
+        "isOnline": {
+          "type": "boolean"
+        },
+        "lastSeenAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "uid",
+        "displayName",
+        "username",
+        "bio",
+        "photoURL",
+        "isOnline",
+        "lastSeenAt",
+        "updatedAt"
+      ]
+    },
+    "PrivateUser": {
+      "title": "PrivateUser",
+      "description": "Private user account PII and preferences restricted strictly to owner",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "theme": {
+          "type": "string",
+          "enum": ["light", "dark"]
+        },
+        "notificationsEnabled": {
+          "type": "boolean"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "email", "theme", "notificationsEnabled", "updatedAt"]
+    },
+    "Chat": {
+      "title": "Chat",
+      "description": "Conversation room (saved, direct, group, or public)",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["saved", "direct", "group", "public"]
+        },
+        "title": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 100
+        },
+        "description": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 300
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "memberIds": {
+          "type": "array",
+          "description": "Bounded list of participant UIDs (max 50)"
+        },
+        "directKey": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 260
+        },
+        "lastMessageText": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 300
+        },
+        "lastMessageSenderId": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 128
+        },
+        "lastMessageSenderName": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 80
+        },
+        "lastMessageAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "title",
+        "description",
+        "ownerId",
+        "memberIds",
+        "directKey",
+        "lastMessageText",
+        "lastMessageSenderId",
+        "lastMessageSenderName",
+        "lastMessageAt",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "ChatMembership": {
+      "title": "ChatMembership",
+      "description": "Per-user chat state (pinned, muted, lastReadAt)",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 260,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "chatId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "pinned": {
+          "type": "boolean"
+        },
+        "muted": {
+          "type": "boolean"
+        },
+        "lastReadAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "chatId", "uid", "pinned", "muted", "lastReadAt", "updatedAt"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "Message inside a chat room",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "chatId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "senderId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "senderName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "senderPhoto": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 500
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "replyToId": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 128
+        },
+        "replyToSenderName": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 80
+        },
+        "replyToText": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 200
+        },
+        "attachmentUrl": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 500
+        },
+        "edited": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "chatId",
+        "senderId",
+        "senderName",
+        "senderPhoto",
+        "text",
+        "replyToId",
+        "replyToSenderName",
+        "replyToText",
+        "attachmentUrl",
+        "edited",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Reaction": {
+      "title": "Reaction",
+      "description": "User emoji reaction on a message",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 260,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "chatId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "messageId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "emoji": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "chatId", "messageId", "uid", "emoji", "updatedAt"]
+    },
+    "TypingStatus": {
+      "title": "TypingStatus",
+      "description": "Real-time typing indicator per user in a chat",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "isTyping": {
+          "type": "boolean"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "displayName", "isTyping", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users_public/{userId}": {
+      "schema": { "$ref": "#/entities/PublicUser" },
+      "description": "Public directory profiles for discovering and messaging users"
+    },
+    "/users_private/{userId}": {
+      "schema": { "$ref": "#/entities/PrivateUser" },
+      "description": "Private user PII and settings readable/writable only by the owner"
+    },
+    "/chats/{chatId}": {
+      "schema": { "$ref": "#/entities/Chat" },
+      "description": "Conversation metadata and bounded participant list"
+    },
+    "/chat_memberships/{membershipId}": {
+      "schema": { "$ref": "#/entities/ChatMembership" },
+      "description": "Per-user pinned, muted, and read cursor state"
+    },
+    "/chats/{chatId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/Message" },
+      "description": "Real-time messages within a conversation"
+    },
+    "/chats/{chatId}/reactions/{reactionId}": {
+      "schema": { "$ref": "#/entities/Reaction" },
+      "description": "Emoji reactions per user per message in a conversation"
+    },
+    "/chats/{chatId}/typing/{userId}": {
+      "schema": { "$ref": "#/entities/TypingStatus" },
+      "description": "Ephemeral typing presence indicators per chat"
+    }
+  }
+}

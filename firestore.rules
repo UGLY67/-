@@ -1,0 +1,320 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Global Primitives ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && (
+        request.auth.token.email_verified == true ||
+        request.auth.token.firebase.sign_in_provider == 'password'
+      );
+    }
+
+    function isOwner(userId) {
+      return isVerified() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidCompositeId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 260 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidPhotoUrl(url) {
+      return url is string && url.size() <= 35000 && (
+        url == '' ||
+        url.matches('^https?://.*') ||
+        url.matches('^data:image/(png|jpeg|webp|gif);base64,[A-Za-z0-9+/=]+$')
+      );
+    }
+
+    // --- Validation Blueprints ---
+    function isValidPublicUser(data) {
+      return data.keys().hasAll(['uid', 'displayName', 'username', 'bio', 'photoURL', 'isOnline', 'lastSeenAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'displayName', 'username', 'bio', 'photoURL', 'isOnline', 'lastSeenAt', 'updatedAt'])
+        && isValidId(data.uid)
+        && data.uid == request.auth.uid
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 80
+        && data.username is string && data.username.size() >= 2 && data.username.size() <= 40 && data.username.matches('^[a-z0-9_]+$')
+        && data.bio is string && data.bio.size() <= 200
+        && isValidPhotoUrl(data.photoURL)
+        && data.isOnline is bool
+        && data.lastSeenAt == request.time
+        && data.updatedAt == request.time;
+    }
+
+    function isValidPrivateUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'theme', 'notificationsEnabled', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'email', 'theme', 'notificationsEnabled', 'updatedAt'])
+        && isValidId(data.uid)
+        && data.uid == request.auth.uid
+        && data.email is string && data.email.size() >= 1 && data.email.size() <= 160
+        && data.theme is string && (data.theme == 'light' || data.theme == 'dark')
+        && data.notificationsEnabled is bool
+        && data.updatedAt == request.time;
+    }
+
+    function isValidChat(data) {
+      return data.keys().hasAll(['id', 'type', 'title', 'description', 'ownerId', 'memberIds', 'directKey', 'lastMessageText', 'lastMessageSenderId', 'lastMessageSenderName', 'lastMessageAt', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'type', 'title', 'description', 'ownerId', 'memberIds', 'directKey', 'lastMessageText', 'lastMessageSenderId', 'lastMessageSenderName', 'lastMessageAt', 'createdAt', 'updatedAt'])
+        && isValidId(data.id)
+        && data.type is string && (data.type == 'saved' || data.type == 'direct' || data.type == 'group' || data.type == 'public')
+        && data.title is string && data.title.size() <= 100
+        && data.description is string && data.description.size() <= 300
+        && isValidId(data.ownerId)
+        && data.memberIds is list && data.memberIds.size() >= 1 && data.memberIds.size() <= 50 && data.memberIds[0] is string
+        && data.directKey is string && data.directKey.size() <= 260
+        && data.lastMessageText is string && data.lastMessageText.size() <= 300
+        && data.lastMessageSenderId is string && data.lastMessageSenderId.size() <= 128
+        && data.lastMessageSenderName is string && data.lastMessageSenderName.size() <= 80
+        && data.lastMessageAt is timestamp
+        && data.createdAt is timestamp
+        && data.updatedAt == request.time;
+    }
+
+    function isValidChatMembership(data) {
+      return data.keys().hasAll(['id', 'chatId', 'uid', 'pinned', 'muted', 'lastReadAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'chatId', 'uid', 'pinned', 'muted', 'lastReadAt', 'updatedAt'])
+        && isValidCompositeId(data.id)
+        && isValidId(data.chatId)
+        && isValidId(data.uid)
+        && data.uid == request.auth.uid
+        && data.id == data.chatId + '_' + request.auth.uid
+        && data.pinned is bool
+        && data.muted is bool
+        && data.lastReadAt is timestamp
+        && data.updatedAt == request.time;
+    }
+
+    function isValidMessage(data, chatId) {
+      return data.keys().hasAll(['id', 'chatId', 'senderId', 'senderName', 'senderPhoto', 'text', 'replyToId', 'replyToSenderName', 'replyToText', 'attachmentUrl', 'edited', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'chatId', 'senderId', 'senderName', 'senderPhoto', 'text', 'replyToId', 'replyToSenderName', 'replyToText', 'attachmentUrl', 'edited', 'createdAt', 'updatedAt'])
+        && isValidId(data.id)
+        && data.chatId == chatId
+        && isValidId(data.senderId)
+        && data.senderId == request.auth.uid
+        && data.senderName is string && data.senderName.size() >= 1 && data.senderName.size() <= 80
+        && data.senderPhoto is string && data.senderPhoto.size() <= 500
+        && data.text is string && data.text.size() >= 1 && data.text.size() <= 4000
+        && data.replyToId is string && data.replyToId.size() <= 128
+        && data.replyToSenderName is string && data.replyToSenderName.size() <= 80
+        && data.replyToText is string && data.replyToText.size() <= 200
+        && data.attachmentUrl is string && data.attachmentUrl.size() <= 500
+        && data.edited is bool
+        && data.createdAt is timestamp
+        && data.updatedAt == request.time;
+    }
+
+    function isValidReaction(data, chatId) {
+      return data.keys().hasAll(['id', 'chatId', 'messageId', 'uid', 'emoji', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'chatId', 'messageId', 'uid', 'emoji', 'updatedAt'])
+        && isValidCompositeId(data.id)
+        && data.chatId == chatId
+        && isValidId(data.messageId)
+        && isValidId(data.uid)
+        && data.uid == request.auth.uid
+        && data.id == data.messageId + '_' + request.auth.uid
+        && data.emoji is string && data.emoji.size() >= 1 && data.emoji.size() <= 16
+        && data.updatedAt == request.time;
+    }
+
+    function isValidTypingStatus(data) {
+      return data.keys().hasAll(['uid', 'displayName', 'isTyping', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'displayName', 'isTyping', 'updatedAt'])
+        && isValidId(data.uid)
+        && data.uid == request.auth.uid
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 80
+        && data.isTyping is bool
+        && data.updatedAt == request.time;
+    }
+
+    // --- Relational Helpers ---
+    function canAccessChat(chatId) {
+      let chatData = get(/databases/$(database)/documents/chats/$(chatId)).data;
+      return chatData.type == 'public' || (request.auth.uid in chatData.memberIds);
+    }
+
+    // --- Collection Rules ---
+    match /users_public/{userId} {
+      allow get: if isVerified() && isValidId(userId);
+      allow list: if isVerified();
+      allow create: if isOwner(userId) && isValidId(userId) && isValidPublicUser(incoming());
+      allow update: if isOwner(userId) && isValidId(userId) && isValidPublicUser(incoming())
+        && incoming().uid == existing().uid
+        && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'username', 'bio', 'photoURL', 'isOnline', 'lastSeenAt', 'updatedAt']);
+      allow delete: if false;
+    }
+
+    match /users_private/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow list: if false;
+      allow create: if isOwner(userId) && isValidId(userId) && isValidPrivateUser(incoming());
+      allow update: if isOwner(userId) && isValidId(userId) && isValidPrivateUser(incoming())
+        && incoming().uid == existing().uid
+        && incoming().diff(existing()).affectedKeys().hasOnly(['email', 'theme', 'notificationsEnabled', 'updatedAt']);
+      allow delete: if false;
+    }
+
+    match /chats/{chatId} {
+      allow get: if isVerified() && isValidId(chatId) && (
+        (resource == null && (
+          chatId == 'saved_' + request.auth.uid ||
+          chatId == 'public_general' ||
+          (chatId.matches('^dm_.*') && request.auth.uid in chatId.split('_'))
+        )) ||
+        (resource != null && (existing().type == 'public' || request.auth.uid in existing().memberIds))
+      );
+      allow list: if isVerified() && (existing().type == 'public' || request.auth.uid in existing().memberIds);
+      allow create: if isVerified()
+        && isValidId(chatId)
+        && isValidChat(incoming())
+        && incoming().id == chatId
+        && incoming().ownerId == request.auth.uid
+        && (request.auth.uid in incoming().memberIds)
+        && incoming().createdAt == request.time
+        && incoming().lastMessageAt == request.time
+        && (incoming().type != 'public' || chatId == 'public_general');
+      allow update: if isVerified()
+        && isValidId(chatId)
+        && isValidChat(incoming())
+        && incoming().id == existing().id
+        && incoming().type == existing().type
+        && incoming().ownerId == existing().ownerId
+        && incoming().directKey == existing().directKey
+        && incoming().createdAt == existing().createdAt
+        && (
+          // Action: Member sends message and updates lastMessage preview
+          (
+            (existing().type == 'public' || request.auth.uid in existing().memberIds)
+            && incoming().lastMessageSenderId == request.auth.uid
+            && incoming().lastMessageAt == request.time
+            && incoming().diff(existing()).affectedKeys().hasOnly(['lastMessageText', 'lastMessageSenderId', 'lastMessageSenderName', 'lastMessageAt', 'updatedAt'])
+          ) ||
+          // Action: Group owner edits title/description
+          (
+            existing().type == 'group'
+            && existing().ownerId == request.auth.uid
+            && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'updatedAt'])
+          ) ||
+          // Action: Group owner updates participants
+          (
+            existing().type == 'group'
+            && existing().ownerId == request.auth.uid
+            && (request.auth.uid in incoming().memberIds)
+            && incoming().diff(existing()).affectedKeys().hasOnly(['memberIds', 'updatedAt'])
+          ) ||
+          // Action: Group member leaves chat
+          (
+            existing().type == 'group'
+            && existing().ownerId != request.auth.uid
+            && (request.auth.uid in existing().memberIds)
+            && !(request.auth.uid in incoming().memberIds)
+            && incoming().memberIds.size() == existing().memberIds.size() - 1
+            && incoming().diff(existing()).affectedKeys().hasOnly(['memberIds', 'updatedAt'])
+          )
+        );
+      allow delete: if isVerified() && isValidId(chatId) && existing().type == 'group' && existing().ownerId == request.auth.uid;
+
+      match /messages/{messageId} {
+        allow get: if isVerified() && isValidId(chatId) && isValidId(messageId) && canAccessChat(chatId);
+        allow list: if isVerified() && isValidId(chatId) && canAccessChat(chatId);
+        allow create: if isVerified()
+          && isValidId(chatId)
+          && isValidId(messageId)
+          && isValidMessage(incoming(), chatId)
+          && incoming().id == messageId
+          && incoming().edited == false
+          && incoming().createdAt == request.time
+          && canAccessChat(chatId);
+        allow update: if isVerified()
+          && isValidId(chatId)
+          && isValidId(messageId)
+          && isValidMessage(incoming(), chatId)
+          && existing().senderId == request.auth.uid
+          && incoming().id == existing().id
+          && incoming().chatId == existing().chatId
+          && incoming().senderId == existing().senderId
+          && incoming().createdAt == existing().createdAt
+          && incoming().edited == true
+          && incoming().diff(existing()).affectedKeys().hasOnly(['text', 'edited', 'updatedAt'])
+          && canAccessChat(chatId);
+        allow delete: if isVerified()
+          && isValidId(chatId)
+          && isValidId(messageId)
+          && existing().senderId == request.auth.uid
+          && canAccessChat(chatId);
+      }
+
+      match /reactions/{reactionId} {
+        allow get: if isVerified() && isValidId(chatId) && isValidCompositeId(reactionId) && canAccessChat(chatId);
+        allow list: if isVerified() && isValidId(chatId) && canAccessChat(chatId);
+        allow create: if isVerified()
+          && isValidId(chatId)
+          && isValidCompositeId(reactionId)
+          && isValidReaction(incoming(), chatId)
+          && incoming().id == reactionId
+          && canAccessChat(chatId);
+        allow update: if isVerified()
+          && isValidId(chatId)
+          && isValidCompositeId(reactionId)
+          && isValidReaction(incoming(), chatId)
+          && existing().uid == request.auth.uid
+          && incoming().id == existing().id
+          && incoming().chatId == existing().chatId
+          && incoming().messageId == existing().messageId
+          && incoming().uid == existing().uid
+          && incoming().diff(existing()).affectedKeys().hasOnly(['emoji', 'updatedAt'])
+          && canAccessChat(chatId);
+        allow delete: if isVerified()
+          && isValidId(chatId)
+          && isValidCompositeId(reactionId)
+          && existing().uid == request.auth.uid
+          && canAccessChat(chatId);
+      }
+
+      match /typing/{userId} {
+        allow get: if isVerified() && isValidId(chatId) && isValidId(userId) && canAccessChat(chatId);
+        allow list: if isVerified() && isValidId(chatId) && canAccessChat(chatId);
+        allow create, update: if isOwner(userId)
+          && isValidId(chatId)
+          && isValidId(userId)
+          && isValidTypingStatus(incoming())
+          && canAccessChat(chatId);
+        allow delete: if isOwner(userId) && isValidId(chatId) && isValidId(userId);
+      }
+    }
+
+    match /chat_memberships/{membershipId} {
+      allow get: if isVerified() && isValidCompositeId(membershipId) && existing().uid == request.auth.uid;
+      allow list: if isVerified() && existing().uid == request.auth.uid;
+      allow create: if isVerified() && isValidCompositeId(membershipId) && isValidChatMembership(incoming()) && incoming().id == membershipId;
+      allow update: if isVerified()
+        && isValidCompositeId(membershipId)
+        && isValidChatMembership(incoming())
+        && existing().uid == request.auth.uid
+        && incoming().id == existing().id
+        && incoming().chatId == existing().chatId
+        && incoming().uid == existing().uid
+        && incoming().diff(existing()).affectedKeys().hasOnly(['pinned', 'muted', 'lastReadAt', 'updatedAt']);
+      allow delete: if isVerified() && isValidCompositeId(membershipId) && existing().uid == request.auth.uid;
+    }
+  }
+}

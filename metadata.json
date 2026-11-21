@@ -1,0 +1,6 @@
+{
+  "name": "Контур — Мессенджер",
+  "description": "Быстрый мессенджер в реальном времени с личными диалогами, групповыми чатами, реакциями и профилями пользователей.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
